@@ -1,4 +1,4 @@
-name: Sync & Release All New Folders
+name: Sync & Release New Folders
 
 on:
   push:
@@ -9,11 +9,10 @@ on:
 jobs:
   sync-and-release:
     runs-on: ubuntu-latest
+
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # alle Tags verfügbar
 
       - name: Git konfigurieren
         run: |
@@ -22,30 +21,38 @@ jobs:
 
       - name: Fork synchronisieren
         run: |
-          git remote add upstream https://github.com/BlackRabbitMsk/ProjectZ.git
+          git remote add upstream https://github.com/BlackRabbitMsk/ProjectZ.git || true
           git fetch upstream
           git merge upstream/main --allow-unrelated-histories
           git push origin main
 
-      - name: Alle Hauptordner prüfen und Releases erstellen
+      - name: Hauptordner finden und releasen
         run: |
           for d in */ ; do
             folder=$(basename "$d")
             echo "Hauptordner gefunden: $folder"
-            
-            # Version aus Ordnernamen extrahieren
-            version=$(echo "$folder" | awk -F'_' '{print $NF}')
-            tag="v$version"
+
+            # Version extrahieren
+            VERSION="v$(echo "$folder" | awk -F'_' '{print $NF}')"
+            echo "Neues Release wird erstellt: $folder -> $VERSION"
 
             # Prüfen, ob Release schon existiert
-            if ! gh release view "$tag" > /dev/null 2>&1; then
-              echo "Neues Release wird erstellt: $folder -> $tag"
-              zipfile="${folder}.zip"
-              zip -r "$zipfile" "$folder"
-              gh release create "$tag" "$zipfile" --title "Release $tag"
-            else
-              echo "Release $tag existiert bereits, überspringe $folder"
+            if gh release view "$VERSION" &>/dev/null; then
+              echo "Release $VERSION existiert bereits, überspringe."
+              continue
             fi
+
+            # Zip erstellen
+            ZIPFILE="${folder}.zip"
+            zip -r "$ZIPFILE" "$folder"
+            echo "ZIP-Datei erstellt: $ZIPFILE"
+
+            # Tag erstellen/pushen
+            git tag -f "$VERSION"
+            git push origin "$VERSION"
+
+            # GitHub Release erstellen
+            gh release create "$VERSION" "$ZIPFILE" --title "Release $VERSION"
           done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
