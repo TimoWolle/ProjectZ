@@ -23,36 +23,31 @@ jobs:
         run: |
           git remote add upstream https://github.com/BlackRabbitMsk/ProjectZ.git || true
           git fetch upstream
-          git merge upstream/main --allow-unrelated-histories
-          git push origin main
+          git merge upstream/main --allow-unrelated-histories || true
+          git push origin main || true
 
-      - name: Hauptordner finden und releasen
+      - name: Hauptordner finden und Releases erstellen
         run: |
           for d in */ ; do
             folder=$(basename "$d")
             echo "Hauptordner gefunden: $folder"
 
-            # Version extrahieren
-            VERSION="v$(echo "$folder" | awk -F'_' '{print $NF}')"
+            # Version aus Ordnernamen extrahieren
+            VERSION=$(echo "$folder" | awk -F'_' '{print $NF}')
+            VERSION="v$VERSION"
             echo "Neues Release wird erstellt: $folder -> $VERSION"
 
-            # Prüfen, ob Release schon existiert
-            if gh release view "$VERSION" &>/dev/null; then
-              echo "Release $VERSION existiert bereits, überspringe."
+            # Prüfen, ob Tag schon auf Remote existiert
+            if git ls-remote --tags origin | grep -q "$VERSION"; then
+              echo "Tag $VERSION existiert bereits. Überspringe."
               continue
             fi
 
-            # Zip erstellen
+            # Ordner zippen
             ZIPFILE="${folder}.zip"
             zip -r "$ZIPFILE" "$folder"
             echo "ZIP-Datei erstellt: $ZIPFILE"
 
-            # Tag erstellen/pushen
-            git tag -f "$VERSION"
-            git push origin "$VERSION"
-
             # GitHub Release erstellen
-            gh release create "$VERSION" "$ZIPFILE" --title "Release $VERSION"
+            gh release create "$VERSION" "$ZIPFILE" --title "$VERSION" || echo "Release existiert schon oder Fehler beim Erstellen"
           done
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
