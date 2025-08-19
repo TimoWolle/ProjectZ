@@ -25,6 +25,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          latest_version=""
+          latest_number=0
+
           for d in */ ; do
             folder=$(basename "$d")
             VERSION=$(echo "$folder" | awk -F'_' '{print $NF}')
@@ -47,4 +50,17 @@ jobs:
             # Neues Release erstellen
             gh release create "$VERSION" "$ZIPFILE" --title "$VERSION"
             echo "Release $VERSION erstellt!"
+
+            # Prüfen, ob dies die höchste Version ist
+            version_number=$(echo "$VERSION" | sed 's/v//; s/\.//g')
+            if [ "$version_number" -gt "$latest_number" ]; then
+              latest_number=$version_number
+              latest_version=$VERSION
+            fi
           done
+
+          # Höchste Version als latest markieren
+          if [ -n "$latest_version" ]; then
+            echo "Setze $latest_version als latest Release"
+            gh release edit "$latest_version" --latest
+          fi
