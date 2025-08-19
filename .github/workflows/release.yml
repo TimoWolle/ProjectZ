@@ -29,7 +29,8 @@ jobs:
       - name: Neuen Hauptordner finden
         id: find_new_folder
         run: |
-          NEW_FOLDER=$(find . -maxdepth 1 -type d ! -name '.' -exec basename {} \; | head -n 1)
+          NEW_FOLDER=$(find . -maxdepth 1 -type d ! -name '.' | head -n 1)
+          NEW_FOLDER=$(basename "$NEW_FOLDER")
           echo "Neuer Hauptordner: $NEW_FOLDER"
           echo "folder=$NEW_FOLDER" >> $GITHUB_ENV
 
