@@ -36,15 +36,12 @@ jobs:
 
       - name: Ordner zippen
         run: |
-          if [ -n "$NEW_FOLDER" ]; then
-            VERSION=$(date +%Y%m%d%H%M%S)
-            ZIPFILE="${NEW_FOLDER}-${VERSION}.zip"
-            zip -r $ZIPFILE $NEW_FOLDER
-            echo "ZIP-Datei erstellt: $ZIPFILE"
-          else
-            echo "Kein neuer Hauptordner gefunden. Abbruch."
-            exit 1
-          fi
+          echo "Ordner: $folder"
+          VERSION=$(date +%Y%m%d%H%M%S)
+          ZIPFILE="${folder}-${VERSION}.zip"
+          zip -r $ZIPFILE "$folder"
+          echo "ZIP-Datei erstellt: $ZIPFILE"
+
 
       - name: Release erstellen und ZIP hochladen
         uses: softprops/action-gh-release@v1
