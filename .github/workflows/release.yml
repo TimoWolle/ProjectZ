@@ -26,26 +26,46 @@ jobs:
           git merge upstream/main --allow-unrelated-histories
           git push origin main
 
-      - name: Neuen Hauptordner finden
-        id: find_new_folder
+            - name: Neuen Hauptordner finden
+        id: find_folder
         run: |
           NEW_FOLDER=$(find . -maxdepth 1 -type d ! -name '.' | head -n 1)
           NEW_FOLDER=$(basename "$NEW_FOLDER")
           echo "Neuer Hauptordner: $NEW_FOLDER"
           echo "folder=$NEW_FOLDER" >> $GITHUB_ENV
 
-      - name: Ordner zippen
+      - name: Version aus Ordnernamen extrahieren
+        id: extract_version
         run: |
-          echo "Ordner: $folder"
-          VERSION=$(date +%Y%m%d%H%M%S)
-          ZIPFILE="${folder}-${VERSION}.zip"
-          zip -r $ZIPFILE "$folder"
-          echo "ZIP-Datei erstellt: $ZIPFILE"
+          # Beispiel: ProjectZ_free_2.0 -> 2.0
+          VERSION=$(echo "$folder" | awk -F'_' '{print $NF}')
+          VERSION="v$VERSION"
+          echo "Erkannte Version: $VERSION"
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+        env:
+          folder: ${{ env.folder }}
 
+      - name: Ordner zippen
+        id: zip_folder
+        run: |
+          if [ -n "$folder" ]; then
+            ZIPFILE="${folder}-${VERSION}.zip"
+            zip -r "$ZIPFILE" "$folder"
+            echo "ZIP-Datei erstellt: $ZIPFILE"
+            echo "ZIPFILE=$ZIPFILE" >> $GITHUB_ENV
+          else
+            echo "Kein neuer Hauptordner gefunden. Abbruch."
+            exit 1
+          fi
+        env:
+          folder: ${{ env.folder }}
+          VERSION: ${{ env.VERSION }}
 
-      - name: Release erstellen und ZIP hochladen
+      - name: GitHub Release erstellen
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.sha }}
+          name: Release ${{ env.folder }} ${{ env.VERSION }}
+          tag_name: ${{ env.VERSION }}
+          files: ${{ env.ZIPFILE }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
