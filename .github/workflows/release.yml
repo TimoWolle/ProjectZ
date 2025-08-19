@@ -1,52 +1,50 @@
-name: Sync & Release New Folders
+name: Auto Force Release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - '*'
   workflow_dispatch:
 
-jobs:
-  sync-and-release:
-    runs-on: ubuntu-latest
+permissions:
+  contents: write
 
+jobs:
+  release:
+    runs-on: ubuntu-latest
     steps:
       - name: Repository auschecken
         uses: actions/checkout@v3
 
-      - name: Git konfigurieren
+      - name: GitHub CLI installieren
         run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
+          sudo apt update
+          sudo apt install -y gh zip
 
-      - name: Fork synchronisieren
-        run: |
-          git remote add upstream https://github.com/BlackRabbitMsk/ProjectZ.git || true
-          git fetch upstream
-          git merge upstream/main --allow-unrelated-histories || true
-          git push origin main || true
-
-      - name: Hauptordner finden und Releases erstellen
+      - name: Force Releases erstellen
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for d in */ ; do
             folder=$(basename "$d")
-            echo "Hauptordner gefunden: $folder"
-
             VERSION=$(echo "$folder" | awk -F'_' '{print $NF}')
             VERSION="v$VERSION"
-            echo "Neues Release wird erstellt: $folder -> $VERSION"
-
-            if git ls-remote --tags origin | grep -q "$VERSION"; then
-              echo "Tag $VERSION existiert bereits. Überspringe."
-              continue
-            fi
 
             ZIPFILE="${folder}.zip"
+            echo "Hauptordner gefunden: $folder"
+            echo "Force Release wird erstellt: $folder -> $VERSION"
+
+            # ZIP erstellen
             zip -r "$ZIPFILE" "$folder"
             echo "ZIP-Datei erstellt: $ZIPFILE"
 
-            # GitHub Release erstellen
+            # Release löschen, falls schon vorhanden
+            if gh release view "$VERSION" >/dev/null 2>&1; then
+              echo "Release $VERSION existiert bereits, lösche es..."
+              gh release delete "$VERSION" --yes
+            fi
+
+            # Neues Release erstellen
             gh release create "$VERSION" "$ZIPFILE" --title "$VERSION"
+            echo "Release $VERSION erstellt!"
           done
