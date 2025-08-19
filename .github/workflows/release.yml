@@ -27,27 +27,26 @@ jobs:
           git push origin main || true
 
       - name: Hauptordner finden und Releases erstellen
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           for d in */ ; do
             folder=$(basename "$d")
             echo "Hauptordner gefunden: $folder"
 
-            # Version aus Ordnernamen extrahieren
             VERSION=$(echo "$folder" | awk -F'_' '{print $NF}')
             VERSION="v$VERSION"
             echo "Neues Release wird erstellt: $folder -> $VERSION"
 
-            # Prüfen, ob Tag schon auf Remote existiert
             if git ls-remote --tags origin | grep -q "$VERSION"; then
               echo "Tag $VERSION existiert bereits. Überspringe."
               continue
             fi
 
-            # Ordner zippen
             ZIPFILE="${folder}.zip"
             zip -r "$ZIPFILE" "$folder"
             echo "ZIP-Datei erstellt: $ZIPFILE"
 
             # GitHub Release erstellen
-            gh release create "$VERSION" "$ZIPFILE" --title "$VERSION" || echo "Release existiert schon oder Fehler beim Erstellen"
+            gh release create "$VERSION" "$ZIPFILE" --title "$VERSION"
           done
