@@ -49,7 +49,7 @@ jobs:
         id: zip_folder
         run: |
           if [ -n "$folder" ]; then
-            ZIPFILE="${folder}-${VERSION}.zip"
+            ZIPFILE="${folder}.zip"
             zip -r "$ZIPFILE" "$folder"
             echo "ZIP-Datei erstellt: $ZIPFILE"
             echo "ZIPFILE=$ZIPFILE" >> $GITHUB_ENV
@@ -64,7 +64,7 @@ jobs:
       - name: GitHub Release erstellen
         uses: softprops/action-gh-release@v1
         with:
-          name: Release ${{ env.folder }} ${{ env.VERSION }}
+          name: Release ${{ env.VERSION }}
           tag_name: ${{ env.VERSION }}
           files: ${{ env.ZIPFILE }}
         env:
